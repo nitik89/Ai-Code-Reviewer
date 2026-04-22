@@ -5,19 +5,22 @@ const app = express();
 app.use(express.json());
 
 app.post("/review", async (req, res) => {
-  const prUrl = req.body.prUrl;
-  if (!prUrl) {
-    res.status(400).json({ error: "prUrl is required" });
+  // handle github webhook payload
+  const action = req.body.action;
+  const prUrl = req.body.pull_request?.html_url ?? req.body.prUrl;
+
+  if (!prUrl || !prUrl.includes("github.com")) {
+    res.status(400).json({ error: "Valid GitHub PR URL is required" });
     return;
   }
 
-  if (!prUrl.includes("github.com")) {
-    res.status(400).json({ error: "prUrl must be a valid GitHub PR URL" });
+  if (action && !["opened", "synchronize"].includes(action)) {
+    res.status(200).json({ message: "Event ignored" });
     return;
   }
 
-  const result = await runAgent(prUrl);
-  res.json({ result });
+  res.status(200).json({ message: "Review started" });
+  runAgent(prUrl).catch(console.error);
 });
 
 app.listen(3000, () => console.log("Server running on port 3000"));
